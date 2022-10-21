@@ -1,3 +1,6 @@
+--СОЗДАНИЕ СТАЙДЖ--
+-- Создаем таблицу с пользователями --
+--DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.users;
 CREATE TABLE IAROSLAVRUSSUYANDEXRU__STAGING.users
 	(id integer PRIMARY KEY,
 	chat_name varchar(200),
@@ -5,12 +8,11 @@ CREATE TABLE IAROSLAVRUSSUYANDEXRU__STAGING.users
 	country varchar(200),
 	age integer)
 ORDER BY id
-SEGMENTED BY HASH(id) ALL NODES
+SEGMENTED BY HASH(id) ALL NODES;
 
-;
---SELECT * FROM IAROSLAVRUSSUYANDEXRU__STAGING.users;
-DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.users;
 
+--таблица с группами пользователей
+--DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.groups;
 CREATE TABLE IAROSLAVRUSSUYANDEXRU__STAGING.groups
 	(id integer PRIMARY KEY,
 	admin_id integer,
@@ -22,13 +24,11 @@ SEGMENTED BY HASH(id) ALL NODES
 PARTITION BY registration_dt::date
 GROUP BY calendar_hierarchy_day(registration_dt::date, 3, 2)
 ;
-
 ALTER TABLE IAROSLAVRUSSUYANDEXRU__STAGING.groups ADD CONSTRAINT groups_admin_id_fk
 FOREIGN KEY (admin_id) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.users(id);
 
-DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.groups;
-
-
+--Таблица с диалогами --
+--DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.dialogs;
 CREATE TABLE IAROSLAVRUSSUYANDEXRU__STAGING.dialogs
 	(message_id integer NOT NULL,
 	message_ts datetime,
@@ -47,14 +47,20 @@ FOREIGN KEY (message_to) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.users(id);
 ALTER TABLE IAROSLAVRUSSUYANDEXRU__STAGING.dialogs ADD CONSTRAINT dialogs_message_group_fk
 FOREIGN KEY (massage_group) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.groups(id);
 
+COPY dialogs (message_id,
+message_ts,
+message_from,
+message_to,
+message,
+message_type)
+FROM LOCAL 'C:\Users\OMEN\Dropbox\Warlock\Data_engineering\yandex_practicum\lesson6\s6-lessons\Тема 2. Аналитические СУБД. Vertica\13. Операции с партициями\dialogs.csv' -- укажите путь до файла
+DELIMITER ',';
 
-DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.dialogs;
 
 
-
-
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.h_users;
-
+-- СОЗДАНИЕ ХАБОВ --
+-- Хаб пользователей --
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.h_users;
 create table IAROSLAVRUSSUYANDEXRU__DWH.h_users
 (
     hk_user_id bigint primary key,
@@ -68,8 +74,8 @@ SEGMENTED BY hk_user_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 ;
-
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.h_groups;
+-- Хаб групп --
+-- drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.h_groups;
 create table IAROSLAVRUSSUYANDEXRU__DWH.h_groups
 (
     hk_group_id bigint primary key,
@@ -83,8 +89,8 @@ SEGMENTED BY hk_group_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 ;
-
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.h_dialogs;
+-- Хаб диалогов --
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.h_dialogs;
 
 create table IAROSLAVRUSSUYANDEXRU__DWH.h_dialogs
 (
@@ -100,7 +106,8 @@ PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 ;
 
-
+-- Заполнение DWH --
+--  Заполнение хаба users
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.h_users(hk_user_id, user_id,registration_dt,load_dt,load_src)
 select
        hash(id) as  hk_user_id,
@@ -111,7 +118,7 @@ select
        from IAROSLAVRUSSUYANDEXRU__STAGING.users
 where hash(id) not in (select hk_user_id from IAROSLAVRUSSUYANDEXRU__DWH.h_users);
 
-
+--  Заполнение хаба groups--
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.h_groups(hk_group_id, group_id,registration_dt,load_dt,load_src)
 select
        hash(id) as hk_group_id,
@@ -121,7 +128,7 @@ select
        's3' as load_src
        from IAROSLAVRUSSUYANDEXRU__STAGING.groups
 where hash(id) not in (select hk_group_id from IAROSLAVRUSSUYANDEXRU__DWH.h_groups);
-
+--  Заполнение хаба dialogs--
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.h_dialogs(hk_message_id, message_id,datetime,load_dt,load_src)
 select
        hash(message_id) as hk_group_id,
@@ -132,8 +139,9 @@ select
        from IAROSLAVRUSSUYANDEXRU__STAGING.dialogs
 where hash(message_id) not in (select hk_message_id from IAROSLAVRUSSUYANDEXRU__DWH.h_dialogs);
 
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.l_user_message;
-
+-- Заполнение таблиц связей --
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.l_user_message;
+--Связующая таблица между пользователями и диалогами --
 create table IAROSLAVRUSSUYANDEXRU__DWH.l_user_message
 (
 hk_l_user_message bigint primary key,
@@ -147,8 +155,8 @@ SEGMENTED BY hk_user_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.l_admins;
-
+--Связующая таблица между пользователями и группами --
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.l_admins;
 create table IAROSLAVRUSSUYANDEXRU__DWH.l_admins
 (
 hk_l_admin_id bigint primary key,
@@ -162,8 +170,8 @@ SEGMENTED BY hk_l_admin_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.l_groups_dialogs;
-
+--Связующая таблица между пользователями и группами и диалогами --
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.l_groups_dialogs;
 create table IAROSLAVRUSSUYANDEXRU__DWH.l_groups_dialogs
 (
 hk_l_groups_dialogs bigint primary key,
@@ -177,9 +185,7 @@ SEGMENTED BY hk_l_groups_dialogs all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-
-
-
+-- Заполнение таблиц с линками --
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.l_admins(hk_l_admin_id, hk_group_id,hk_user_id,load_dt,load_src)
 select
 hash(hg.hk_group_id,hu.hk_user_id),
@@ -191,7 +197,6 @@ from IAROSLAVRUSSUYANDEXRU__STAGING.groups as g
 left join IAROSLAVRUSSUYANDEXRU__DWH.h_users as hu on g.admin_id = hu.user_id
 left join IAROSLAVRUSSUYANDEXRU__DWH.h_groups as hg on g.id = hg.group_id
 where hash(hg.hk_group_id,hu.hk_user_id) not in (select hk_l_admin_id from IAROSLAVRUSSUYANDEXRU__DWH.l_admins);
-
 
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.l_user_message(
 hk_l_user_message,
@@ -211,7 +216,6 @@ left join IAROSLAVRUSSUYANDEXRU__DWH.h_users as hu on g.message_from  = hu.user_
 where hash(hu.hk_user_id,hd.hk_message_id)
 not in (select hk_l_user_message from IAROSLAVRUSSUYANDEXRU__DWH.l_user_message);
 
-
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.l_groups_dialogs(hk_l_groups_dialogs,
 hk_message_id, hk_group_id, load_dt, load_src)
 select
@@ -226,12 +230,9 @@ INNER join IAROSLAVRUSSUYANDEXRU__DWH.h_groups as hg on g.message_group  = hg.gr
 where hash(hd.hk_message_id,hg.hk_group_id)
 not in (select hk_l_groups_dialogs from IAROSLAVRUSSUYANDEXRU__DWH.l_groups_dialogs);
 
+-- Создание и заполнение таблиц саттелитов --
 
-
-
-
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_admins;
-
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_admins;
 create table IAROSLAVRUSSUYANDEXRU__DWH.s_admins
 (
 hk_admin_id bigint not null CONSTRAINT fk_s_admins_l_admins REFERENCES IAROSLAVRUSSUYANDEXRU__DWH.l_admins (hk_l_admin_id),
@@ -245,7 +246,6 @@ SEGMENTED BY hk_admin_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.s_admins(hk_admin_id, is_admin,admin_from,load_dt,load_src)
 select la.hk_l_admin_id,
 True as is_admin,
@@ -255,39 +255,7 @@ now() as load_dt,
 from IAROSLAVRUSSUYANDEXRU__DWH.l_admins as la
 left join IAROSLAVRUSSUYANDEXRU__DWH.h_groups as hg on la.hk_group_id = hg.hk_group_id;
 
-
-
-СОЗДАЕМ И ЗАПОЛНЯЕМ САТТЕЛИТЫ
-
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_admins;
-
-create table IAROSLAVRUSSUYANDEXRU__DWH.s_admins
-(
-hk_admin_id bigint not null CONSTRAINT fk_s_admins_l_admins REFERENCES IAROSLAVRUSSUYANDEXRU__DWH.l_admins (hk_l_admin_id),
-is_admin boolean,
-admin_from datetime,
-load_dt datetime,
-load_src varchar(20)
-)
-order by load_dt
-SEGMENTED BY hk_admin_id all nodes
-PARTITION BY load_dt::date
-GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
-
-
-INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.s_admins(hk_admin_id, is_admin,admin_from,load_dt,load_src)
-select la.hk_l_admin_id,
-True as is_admin,
-hg.registration_dt,
-now() as load_dt,
-'s3' as load_src
-from IAROSLAVRUSSUYANDEXRU__DWH.l_admins as la
-left join IAROSLAVRUSSUYANDEXRU__DWH.h_groups as hg on la.hk_group_id = hg.hk_group_id;
-
-
---s_group_name
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_group_name;
-
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_group_name;
 create table IAROSLAVRUSSUYANDEXRU__DWH.s_group_name
 (
 hk_group_id bigint not null CONSTRAINT fk_s_group_name
@@ -300,7 +268,6 @@ SEGMENTED BY hk_group_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.s_group_name
 (hk_group_id, group_name,load_dt,load_src)
 SELECT
@@ -312,9 +279,7 @@ FROM IAROSLAVRUSSUYANDEXRU__DWH.h_groups as hg
 LEFT JOIN IAROSLAVRUSSUYANDEXRU__STAGING.groups as sg
 on sg.id = hg.group_id;
 
---
---s_group_private_status
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_group_private_status;
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_group_private_status;
 
 create table IAROSLAVRUSSUYANDEXRU__DWH.s_group_private_status
 (
@@ -328,7 +293,6 @@ SEGMENTED BY hk_group_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.s_group_private_status
 (hk_group_id, is_private, load_dt, load_src)
 SELECT
@@ -340,10 +304,7 @@ FROM IAROSLAVRUSSUYANDEXRU__DWH.h_groups as hg
 LEFT JOIN IAROSLAVRUSSUYANDEXRU__STAGING.groups as sg
 on sg.id = hg.group_id;
 
-------------------------------
-
---s_dialog_info
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_dialog_info;
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_dialog_info;
 
 create table IAROSLAVRUSSUYANDEXRU__DWH.s_dialog_info
 (hk_message_id bigint not null CONSTRAINT fk_s_dialog_info
@@ -358,7 +319,6 @@ SEGMENTED BY hk_message_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.s_dialog_info
 (hk_message_id, message, message_from,message_to,load_dt,load_src)
 SELECT
@@ -372,10 +332,7 @@ FROM IAROSLAVRUSSUYANDEXRU__DWH.h_dialogs hd
 LEFT JOIN IAROSLAVRUSSUYANDEXRU__STAGING.dialogs std
 ON hd.message_id = std.message_id;
 
-----
-
---s_user_socdem
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_user_socdem;
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_user_socdem;
 
 create table IAROSLAVRUSSUYANDEXRU__DWH.s_user_socdem
 (hk_user_id bigint not null CONSTRAINT fk_s_user_socdem
@@ -389,8 +346,6 @@ SEGMENTED BY hk_user_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
 
-
-
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.s_user_socdem
 (hk_user_id,country,age,load_dt,load_src)
 SELECT
@@ -403,9 +358,7 @@ FROM IAROSLAVRUSSUYANDEXRU__DWH.h_users hu
 LEFT JOIN IAROSLAVRUSSUYANDEXRU__STAGING.users stu
 ON hu.user_id = stu.id;
 
-
---s_user_chatinfo
-drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_user_chatinfo;
+--drop table if exists IAROSLAVRUSSUYANDEXRU__DWH.s_user_chatinfo;
 
 create table IAROSLAVRUSSUYANDEXRU__DWH.s_user_chatinfo
 (hk_user_id bigint not null CONSTRAINT fk_s_user_chatinfo
@@ -417,7 +370,6 @@ load_src varchar(20)
 SEGMENTED BY hk_user_id all nodes
 PARTITION BY load_dt::date
 GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
-
 
 INSERT INTO IAROSLAVRUSSUYANDEXRU__DWH.s_user_chatinfo(hk_user_id, chat_name,load_dt,load_src)
 SELECT
