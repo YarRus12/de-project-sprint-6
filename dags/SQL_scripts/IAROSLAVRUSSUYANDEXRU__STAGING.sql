@@ -2,22 +2,26 @@
 -- Создаем таблицу с пользователями --
 --DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.users;
 CREATE TABLE IF NOT EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.users
-	(id integer PRIMARY KEY,
+(
+	id integer PRIMARY KEY,
 	chat_name varchar(200),
 	registration_dt datetime,
 	country varchar(200),
-	age integer)
+	age integer
+)
 ORDER BY id
 SEGMENTED BY HASH(id) ALL NODES;
 
 --таблица с группами пользователей
 --DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.groups;
 CREATE TABLE IF NOT EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.groups
-	(id integer PRIMARY KEY,
+(
+	id integer PRIMARY KEY,
 	admin_id integer,
 	group_name varchar(100),
 	registration_dt datetime,
-	is_private integer)
+	is_private integer
+)
 ORDER BY id, admin_id
 SEGMENTED BY HASH(id) ALL NODES
 PARTITION BY registration_dt::date
@@ -29,12 +33,14 @@ FOREIGN KEY (admin_id) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.users(id);
 --Таблица с диалогами --
 --DROP TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.dialogs;
 CREATE TABLE IF NOT EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.dialogs
-	(message_id integer NOT NULL,
+(
+	message_id integer NOT NULL,
 	message_ts datetime,
 	message_from integer,
 	message_to integer,
 	message varchar (1000),
-	massage_group int)
+	massage_group int
+)
 ORDER BY message_id
 SEGMENTED BY HASH(message_id) ALL NODES
 PARTITION BY message_ts::date
@@ -46,20 +52,20 @@ FOREIGN KEY (message_to) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.users(id);
 ALTER TABLE IAROSLAVRUSSUYANDEXRU__STAGING.dialogs ADD CONSTRAINT dialogs_message_group_fk
 FOREIGN KEY (massage_group) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.groups(id);
 
-
+--drop TABLE IF EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.group_log;
 CREATE TABLE IF NOT EXISTS IAROSLAVRUSSUYANDEXRU__STAGING.group_log
 (
     group_id integer NOT NULL,
     user_id integer NOT NULL,
     user_id_from integer,
     event varchar(10),
-    datetime datetime
+    datetime_ts datetime
 )
 ORDER BY group_id
 SEGMENTED BY HASH(group_id) ALL NODES
-PARTITION BY datetime::date
-GROUP BY calendar_hierarchy_day(datetime::date, 3, 2);
+PARTITION BY datetime_ts::date
+GROUP BY calendar_hierarchy_day(datetime_ts::date, 3, 2);
 ALTER TABLE IAROSLAVRUSSUYANDEXRU__STAGING.group_log ADD CONSTRAINT log_group_fk
-FOREIGN KEY (group_id) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.groups(group_id);
+FOREIGN KEY (group_id) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.groups(id);
 ALTER TABLE IAROSLAVRUSSUYANDEXRU__STAGING.group_log ADD CONSTRAINT log_user_fk
-FOREIGN KEY (user_id) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.users(user_id);
+FOREIGN KEY (user_id) REFERENCES IAROSLAVRUSSUYANDEXRU__STAGING.users(id);

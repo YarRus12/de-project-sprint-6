@@ -37,7 +37,7 @@ dag = DAG(
     dag_id='get_data',
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    tags=['Virtica'],
+    tags=['Vertica'],
     is_paused_upon_creation=True)
 groups_load = PythonOperator(task_id='group_data',
                                  python_callable=fetch_s3_file,

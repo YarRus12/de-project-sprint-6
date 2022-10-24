@@ -57,7 +57,7 @@ def load_to_dialogs(local_filename, schema, table_name, conn_info=conn_info):
 def group_log(local_filename, schema, table_name, conn_info=conn_info):
     with vertica_python.connect(**conn_info) as conn:
         cur = conn.cursor()
-        cur.execute(f"""COPY {schema}.{table_name} (group_id,user_id,user_id_from,event,datetime)
+        cur.execute(f"""COPY {schema}.{table_name} (group_id,user_id,user_id_from,event,datetime_ts)
                         FROM LOCAL '/data/{local_filename}'
                         DELIMITER ','
                         REJECTED DATA AS TABLE {schema}.{table_name}_reg

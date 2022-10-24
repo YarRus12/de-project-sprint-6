@@ -36,7 +36,7 @@ create table IF NOT EXISTS IAROSLAVRUSSUYANDEXRU__DWH.h_dialogs
 (
     hk_message_id bigint primary key,
     message_id      int,
-    datetime datetime,
+    datetime_ts datetime,
 	load_dt datetime,
     load_src varchar(20)
 )
