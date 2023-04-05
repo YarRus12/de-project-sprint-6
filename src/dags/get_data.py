@@ -15,7 +15,8 @@ log = logging.getLogger(__name__)
 bucket_files = []
 
 
-def fetch_s3_file(bucket: str, key: str):
+def fetch_s3_file(key: str):
+    """Функция принимает в себя наименование файла и сохраняет его в папку с данными"""
     session = boto3.session.Session()
     s3_client = session.client(
         service_name='s3',
@@ -26,10 +27,10 @@ def fetch_s3_file(bucket: str, key: str):
     s3_client.download_file(
         Bucket='sprint6',
         Key=key,
-        Filename=f'/data/{key}'
+        Filename=f'/data/{key}.csv'
     )
     bucket_files.append(key)
-    log.info(f'Файл {key} загружен')
+    log.info(f'Файл {key}csv загружен')
 
 
 dag = DAG(
@@ -41,15 +42,15 @@ dag = DAG(
     is_paused_upon_creation=True)
 groups_load = PythonOperator(task_id='group_data',
                                  python_callable=fetch_s3_file,
-                                 op_kwargs={'bucket': 'data-bucket', 'key': 'groups.csv'},
+                                 op_kwargs={'bucket': 'data-bucket', 'key': 'groups'},
                                  dag=dag)
 users_load = PythonOperator(task_id='users_data',
                                  python_callable=fetch_s3_file,
-                                 op_kwargs={'bucket': 'data-bucket', 'key': 'users.csv'},
+                                 op_kwargs={'bucket': 'data-bucket', 'key': 'users'},
                                  dag=dag)
 dialogs_load = PythonOperator(task_id='dialogs_data',
                                  python_callable=fetch_s3_file,
-                                 op_kwargs={'bucket': 'data-bucket', 'key': 'dialogs.csv'},
+                                 op_kwargs={'bucket': 'data-bucket', 'key': 'dialogs'},
                                  dag=dag)
 group_log = PythonOperator(task_id='group_load',
                                  python_callable=fetch_s3_file,

@@ -19,33 +19,23 @@ conn_info = {'host': '51.250.75.20',
              'autocommit': True
 }
 
-def check_and_create(table_schema, special):
+def check_and_create(table_schema: str, suffix: str):
+    """Функция принимает наименование схемы и суффикс типа таблицы
+    Проверяет наличие таблиц в схеме и при их отсутствии создает таблицы"""
     with vertica_python.connect(**conn_info) as conn:
         cur = conn.cursor()
-        script_name = f'src/sql/ddl_{table_schema}_{special}.sql'
+        script_name = f'src/sql/ddl_{table_schema}_{suffix}.sql'
         cur.execute(open(script_name, 'r').read())
-    log.info(f'Проверка схемы {table_schema} завершена успешно')
+    log.info(f'Проверка {table_schema}{suffix} завершена успешно')
 
-def load_to_hubs(table_schema, special='_h'):
+def load_to_dwh(table_schema: str, suffix: str):
+    """Функция принимает наименование схемы и суффикс типа таблицы
+        и загружает данные в таблицу"""
     with vertica_python.connect(**conn_info) as conn:
         cur = conn.cursor()
-        script_name = f'src/sql/loaddata_{table_schema}{special}.sql'
+        script_name = f'src/sql/loaddata_{table_schema}{suffix}.sql'
         cur.execute(open(script_name, 'r').read())
-    log.info(f'Данные загружены в хабы схемы {table_schema}')
-
-def load_to_links(table_schema, special='_l'):
-    with vertica_python.connect(**conn_info) as conn:
-        cur = conn.cursor()
-        script_name = f'src/sql/loaddata_{table_schema}{special}.sql'
-        cur.execute(open(script_name, 'r').read())
-    log.info(f'Данные загружены в связи схемы {table_schema}')
-
-def load_to_sats(table_schema, special='_s'):
-    with vertica_python.connect(**conn_info) as conn:
-        cur = conn.cursor()
-        script_name = f'src/sql/loaddata_{table_schema}{special}.sql'
-        cur.execute(open(script_name, 'r').read())
-    log.info(f'Данные загружены в саттелиты схемы {table_schema}')
+    log.info(f'Данные загружены в таблицы {table_schema}{suffix}')
 
 
 dag = DAG(
@@ -57,26 +47,26 @@ dag = DAG(
     is_paused_upon_creation=True)
 check_hubs = PythonOperator(task_id='check_hubs',
                                  python_callable=check_and_create,
-                                 op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH', 'special':'h'},
+                                 op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH', 'suffix':'h'},
                                  dag=dag)
 load_to_hubs = PythonOperator(task_id='load_to_hubs',
-                                 python_callable=load_to_hubs,
+                                 python_callable=load_to_dwh,
                                  op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH'},
                                  dag=dag)
 check_links = PythonOperator(task_id='check_links',
                                  python_callable=check_and_create,
-                                 op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH', 'special':'l'},
+                                 op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH', 'suffix':'l'},
                                  dag=dag)                                 
 load_to_links= PythonOperator(task_id='load_to_links',
-                                 python_callable=load_to_links,
+                                 python_callable=load_to_dwh,
                                  op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH'},
                                  dag=dag)
 check_sats = PythonOperator(task_id='check_sats',
                                  python_callable=check_and_create,
-                                 op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH', 'special':'s'},
+                                 op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH', 'suffix':'s'},
                                  dag=dag)                                 
 load_to_sats= PythonOperator(task_id='load_to_sats',
-                                 python_callable=load_to_sats,
+                                 python_callable=load_to_dwh,
                                  op_kwargs={'table_schema': 'IAROSLAVRUSSUYANDEXRU__DWH'},
                                  dag=dag)
 
