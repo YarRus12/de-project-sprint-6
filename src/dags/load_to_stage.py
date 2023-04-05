@@ -1,11 +1,8 @@
 from airflow import DAG
-from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
-from airflow.decorators import dag
 from datetime import datetime
 import logging
 import vertica_python
-from getpass import getpass
 
 
 log = logging.getLogger(__name__)
