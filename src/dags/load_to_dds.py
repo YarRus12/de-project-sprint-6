@@ -22,28 +22,28 @@ conn_info = {'host': '51.250.75.20',
 def check_and_create(table_schema, special):
     with vertica_python.connect(**conn_info) as conn:
         cur = conn.cursor()
-        script_name = f'/lessons/dags/SQL_scripts/ddl_{table_schema}_{special}.sql'
+        script_name = f'src/sql/ddl_{table_schema}_{special}.sql'
         cur.execute(open(script_name, 'r').read())
     log.info(f'Проверка схемы {table_schema} завершена успешно')
 
 def load_to_hubs(table_schema, special='_h'):
     with vertica_python.connect(**conn_info) as conn:
         cur = conn.cursor()
-        script_name = f'/lessons/dags/SQL_scripts/loaddata_{table_schema}{special}.sql'
+        script_name = f'src/sql/loaddata_{table_schema}{special}.sql'
         cur.execute(open(script_name, 'r').read())
     log.info(f'Данные загружены в хабы схемы {table_schema}')
 
 def load_to_links(table_schema, special='_l'):
     with vertica_python.connect(**conn_info) as conn:
         cur = conn.cursor()
-        script_name = f'/lessons/dags/SQL_scripts/loaddata_{table_schema}{special}.sql'
+        script_name = f'src/sql/loaddata_{table_schema}{special}.sql'
         cur.execute(open(script_name, 'r').read())
     log.info(f'Данные загружены в связи схемы {table_schema}')
 
 def load_to_sats(table_schema, special='_s'):
     with vertica_python.connect(**conn_info) as conn:
         cur = conn.cursor()
-        script_name = f'/lessons/dags/SQL_scripts/loaddata_{table_schema}{special}.sql'
+        script_name = f'src/sql/loaddata_{table_schema}{special}.sql'
         cur.execute(open(script_name, 'r').read())
     log.info(f'Данные загружены в саттелиты схемы {table_schema}')
 
